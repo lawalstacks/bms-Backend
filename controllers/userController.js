@@ -1,5 +1,6 @@
 const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
+const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie')
 
 const signupUser = async (req,res)=>{
     try{
@@ -19,6 +20,7 @@ const signupUser = async (req,res)=>{
 
        await newUser.save();
         if(newUser){
+            genTokenandSetCookie(newUser._id,res);
             res.status(201).json({
                 _id: newUser._id,
                 username: newUser.username,
@@ -37,11 +39,24 @@ const signupUser = async (req,res)=>{
 
 const loginUser = async (req,res)=>{
     try{
-        res.send("login successfully!");
+        const {username,password} = req.body;
+        const user = await User.findOne({username});
+        const isPassword =await bcrypt.compare(password,user.password);
+        if(!user || !isPassword) return res.status(400).json("invalid username or password");
+        genTokenandSetCookie(user._id,res);
+        res.status(201).json({
+            _id: user._id,
+            username: user.username,
+            email: user.email,
+            password: user.password
+
+        })
     }catch (error){
-        console.log(error)
+        res.status(500).json({error: error})
+        console.log(error);
     }
 }
+
 
 module.exports = {
     signupUser,
