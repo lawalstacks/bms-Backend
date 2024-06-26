@@ -8,6 +8,7 @@ const PORT = process.env.PORT;
 connectDb();
 
 
+
 //built in middleware
 const app = express();
 app.use(cors());
