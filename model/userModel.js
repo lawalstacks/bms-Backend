@@ -29,7 +29,23 @@ const userSchema = mongoose.Schema({
     bio:{
         type: String,
         default: ""
-    }
+    },
+    balance:{
+        type: Number,
+        default: 0
+    },
+    cards:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Card'
+    }],
+    posts:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+    }],
+    supporters:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Supporter',
+    }]
 },{timestamps: true})
 
 const User = mongoose.model('User', userSchema);
