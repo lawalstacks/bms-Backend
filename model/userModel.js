@@ -26,6 +26,10 @@ const userSchema = mongoose.Schema({
         type: [String],
         default:[]
     },
+    following:{
+        type: [String],
+        default:[]
+    },
     bio:{
         type: String,
         default: ""

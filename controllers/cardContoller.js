@@ -29,9 +29,9 @@ const create = async (req,res)=> {
             img,
             video
         })
-
         await newCard.save();
         if (newCard) {
+            await User.findByIdAndUpdate(user._id,{$push:{cards: newCard._id}})
             res.status(201).json({message:"🤯 steeze card created successfully!"})
             }
     }catch (err){
