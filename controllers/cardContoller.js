@@ -18,7 +18,6 @@ const create = async (req,res)=> {
             console.log(user.id)
             console.log(req.user.toString())
         }
-
         const maxLength = 500;
         if(text.length > maxLength){
             res.status(400).json({error: 'maximum text character is 500'});
@@ -38,27 +37,10 @@ const create = async (req,res)=> {
         console.log(err);
     }
 }
-
 //update card
-/*const create = async (userId,res)=>{
-    const user = await User.findOne({userId});
-    if(!user){
-        res.status(400).json({error:'you need to login'});
-    }
-    const newCard = new Card({
-        text,
-        img,
-        video
-    })
-    await newCard.save();
-    if(newCard){
-        res.status(201).json({
-            text: newCard.text,
-            img: newCard.img,
-            video: newCard.video
-        })
-    }
-}*/
+const update = async (req,res)=>{
+
+}
 
 //delete card
 

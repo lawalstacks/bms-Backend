@@ -41,7 +41,7 @@ const loginUser = async (req,res)=>{
     try{
         const {username,password} = req.body;
         const user = await User.findOne({username});
-        const isPassword =await bcrypt.compare(password,user.password || "");
+        const isPassword =await bcrypt.compare(password,user.password);
         if(!user || !isPassword) return res.status(400).json("invalid username or password");
         genTokenandSetCookie(user._id,res);
         res.status(201).json({
@@ -49,7 +49,6 @@ const loginUser = async (req,res)=>{
             username: user.username,
             email: user.email,
             password: user.password
-
         })
     }catch (error){
         res.status(500).json({error: error})
@@ -66,7 +65,6 @@ const logoutUser =(req,res)=>{
         res.status(500).json({error:err})
     }
 }
-
 //followunfollow
 const followUnfollow = async (req,res)=>{
     try{
@@ -96,9 +94,51 @@ const followUnfollow = async (req,res)=>{
         res.status(500).json({error: "error to follow/unfollow"})
     }
 }
+//updateProfile
+const updateProfile= async (req,res)=>{
+    const {name,username,email,password,bio,profilePic} = req.body
+    const userId = req.user._id;
+    try{
+        let user = await User.findById(userId);
+        return user && res.status(400).json({error:"user not found"})
+        if(req.params.id  !== userId.toString()){res.status(400).json({error:"you annot update other users profile"})}
+        let userExists= await User.findOne({$or:[{email},{username}], _id:{$ne: userId}});
+        if(userExists){ res.status(200).json({message: "username / email already used"})}
+            user.name = name || user.name;
+            user.username = username || user.username
+            user.email = email || user.email
+            user.bio = bio || user.bio
+            user.profilePic = profilePic || user.profilePic
+            if (password) {
+                const salt = await bcrypt.genSalt(10);
+                const hashedPassword = await bcrypt.hash(password, salt);
+                user.password = hashedPassword;
+            }
+            user = await user.save()
+            res.status(201).json({message:"profile updated!"})
+
+    }catch(error){
+        res.status(500).json({error:error})
+    }
+}
+//getProfile
+const getProfile = async (req,res) =>{
+    try{
+        const username = req.params.username
+        const user = await User.findOne({username}).select("-password");
+        return user ? res.status(200).json({message: user}):  res.status(400).json({error:"user not found"})
+
+    }catch (error) {
+        res.status(400).json({message: "server error"})
+        console.log(error)
+    }
+}
+
 module.exports = {
     signupUser,
     loginUser,
     logoutUser,
-    followUnfollow
+    followUnfollow,
+    updateProfile,
+    getProfile
 }
