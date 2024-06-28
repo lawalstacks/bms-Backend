@@ -18,6 +18,8 @@ app.use(cookieParser());
 
 app.use('/api', require('./routes/userRoutes'));
 app.use('/api/card',require('./routes/cardRoutes'));
+app.use('api/post',require('./routes/postRoutes'));
+
 
 app.listen(PORT,()=>{
     console.log(`connected on port: ${PORT}`);

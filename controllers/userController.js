@@ -2,6 +2,7 @@ const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
 const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie')
 
+//signup
 const signupUser = async (req,res)=>{
     try{
         const {username,email,password} = req.body;
@@ -37,6 +38,7 @@ const signupUser = async (req,res)=>{
     }
 }
 
+//login
 const loginUser = async (req,res)=>{
     try{
         const {username,password} = req.body;
@@ -56,6 +58,7 @@ const loginUser = async (req,res)=>{
     }
 }
 
+//logout
 const logoutUser =(req,res)=>{
     try{
         res.cookie("jwt","",{maxAge:1});
@@ -65,6 +68,7 @@ const logoutUser =(req,res)=>{
         res.status(500).json({error:err})
     }
 }
+
 //followunfollow
 const followUnfollow = async (req,res)=>{
     try{
@@ -94,6 +98,7 @@ const followUnfollow = async (req,res)=>{
         res.status(500).json({error: "error to follow/unfollow"})
     }
 }
+
 //updateProfile
 const updateProfile= async (req,res)=>{
     const {name,username,email,password,bio,profilePic} = req.body
@@ -121,6 +126,7 @@ const updateProfile= async (req,res)=>{
         res.status(500).json({error:error})
     }
 }
+
 //getProfile
 const getProfile = async (req,res) =>{
     try{
