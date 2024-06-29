@@ -31,13 +31,33 @@ const create = async (req,res)=> {
         await newPost.save();
         if (newPost) {
             await User.findByIdAndUpdate(user._id,{$push:{posts: newPost._id}})
-            res.status(201).json({message:"🤯 steeze card created successfully!"})
+            res.status(201).json({newPost,message:"🤯 steeze post created successfully!"})
         }
     }catch (err){
         console.log(err);
     }
 }
 //update card
+const update = async (req,res)=>{
+    const{postedBy,text,image,video} = req.body
+    const userId = req.user._id;
+    const postId = req.params.id;
+    try{
+        const user = await User.findById(userId);
+        let post = await Post.findById(postId);
+        if(user._id.toString() !== postedBy.toString()){res.status(400).json({error:"You cannot edit this post"})}
+        if(!post){res.status(400).json({error:"post not found"})}
+        post.postedBy = postedBy
+        post.text = text || post.text;
+        post.image = image || post.image;
+        post.video = video || post.text;
+        post = await post.save();
+        res.status(200).json({post:post,message:"updated successfully"});
+
+    }catch(error){
+        res.status(400);
+    }
+}
 const getPost = async (req,res)=>{
 
 }
@@ -45,5 +65,6 @@ const getPost = async (req,res)=>{
 //delete card
 module.exports = {
     create,
+    update,
     getPost,
 }

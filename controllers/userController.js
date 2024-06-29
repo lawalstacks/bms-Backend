@@ -105,7 +105,7 @@ const updateProfile= async (req,res)=>{
     const userId = req.user._id;
     try{
         let user = await User.findById(userId);
-        return user && res.status(400).json({error:"user not found"})
+        if(!user){  res.status(400).json({error:"user not found"})}
         if(req.params.id  !== userId.toString()){res.status(400).json({error:"you annot update other users profile"})}
         let userExists= await User.findOne({$or:[{email},{username}], _id:{$ne: userId}});
         if(userExists){ res.status(200).json({message: "username / email already used"})}
@@ -120,7 +120,7 @@ const updateProfile= async (req,res)=>{
                 user.password = hashedPassword;
             }
             user = await user.save()
-            res.status(201).json({message:"profile updated!"})
+            res.status(201).json({user,message:"profile updated!"})
 
     }catch(error){
         res.status(500).json({error:error})

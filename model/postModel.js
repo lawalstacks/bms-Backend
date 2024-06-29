@@ -6,6 +6,11 @@ const postSchema = mongoose.Schema({
         ref: 'User',
         required: true
     },
+    title:{
+        type: String,
+        maxLength: 10,
+    },
+
     text:{
         type: String,
         maxLength: 500

@@ -8,7 +8,6 @@ const PORT = process.env.PORT;
 //connect database
 connectDb();
 
-
 //built in middleware
 const app = express();
 app.use(cors());
@@ -18,7 +17,7 @@ app.use(cookieParser());
 
 app.use('/api', require('./routes/userRoutes'));
 app.use('/api/card',require('./routes/cardRoutes'));
-app.use('api/post',require('./routes/postRoutes'));
+app.use('/api/post',require('./routes/postRoutes'));
 
 
 app.listen(PORT,()=>{

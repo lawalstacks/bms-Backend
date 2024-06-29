@@ -6,6 +6,12 @@ const cardSchema = mongoose.Schema({
         ref: 'User',
         required: true
     },
+    title:{
+      type: String,
+      maxLength: 10,
+      unique: true,
+        required: true,
+    },
     text:{
         type: String,
         maxLength: 500
