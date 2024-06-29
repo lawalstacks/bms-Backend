@@ -48,19 +48,19 @@ const update = async (req,res)=>{
     try{
         const user = await User.findById(userId);
         let card = await Card.findOne({_id: cardId});
-        console.log(card)
-        let titleExists = await Card.findOne({$or:[{title}], postedBy:{$ne: userId}})
         if(user._id.toString() !== postedBy.toString()){res.status(400).json({error:"You cannot edit this card"})}
-        if(titleExists){res.status(400).json({error:"title already used on another steeze card"})}
         if(!card){res.status(400).json({error:"card not found"})}
+         else {
             card.title = title || card.title
             card.text = text || card.text;
             card.image = image || card.image;
             card.video = video || video.text;
             card = await card.save();
             res.status(200).json({card: card, message: "updated succesfully"});
+        }
     }catch(error){
-        res.status(400).json({error:"server error"})
+        if(error.code === 11000){res.status(400).json({error:"title already used on another steeze card"})}
+        else{res.status(400).json({error:"server error"})}
     }
 }
 const getCard = async(req,res)=>{
