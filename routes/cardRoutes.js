@@ -5,7 +5,7 @@ const protectedRoute = require('../middlewares/protectedRoute');
 
 router.post('/create',protectedRoute, cardController.create);
 router.post('/update/:id',protectedRoute, cardController.update);
-router.post('/:title',cardController.getCard);
-//router.post('/card/delete', cardOptions.create);
+router.get('/:slug',cardController.getCard);
+router.post('/delete/:slug',protectedRoute, cardController.deleteCard);
 
 module.exports = router;

@@ -1,80 +1,102 @@
 const Card = require('../model/cardModel');
-const User = require('../model/userModel')
+const User = require('../model/userModel');
+const Slug = require("../utils/helpers/slugify");
 
 //creat cards
 const create = async (req,res)=> {
+    const {postedBy, text, title, img, video} = req.body
     try {
-        const {postedBy,title,text,img,video} = req.body;
-        const cardExists= await Card.findOne({title});
-        if(cardExists){ res.status(400).json({error: "card title already used for another steeze card"})}
-        const user = await User.findById(postedBy);
         if (!postedBy || !text || !title) {
             res.status(400).json({error: 'posted by, title and text field are required'});
         }
-        if(!user){
+        const user = await User.findById(postedBy);
+        if (!user) {
             res.status(400).json({error: 'user not found'});
         }
-        if(user._id.toString() !==req.user._id.toString() ){
-            res.status(400).json({error:"unauthorized to create steeze card"})
-            console.log(user.id)
-            console.log(req.user.toString())
+        if (user._id.toString() !== req.user._id.toString()) {
+            res.status(400).json({error: "unauthorized to create steeze post"})
+            return;
         }
         const maxLength = 500;
-        if(text.length > maxLength){
+        if (text.length > maxLength) {
             res.status(400).json({error: 'maximum text character is 500'});
         }
+        let slug = Slug.slugify(title);
         const newCard = new Card({
             postedBy,
             title,
+            slug,
             text,
             img,
             video
         })
         await newCard.save();
-        if (newCard) {
-            await User.findByIdAndUpdate(user._id,{$push:{cards: newCard._id}})
-            res.status(201).json(newCard)
-            }
-    }catch (err){
+        await User.findByIdAndUpdate(user._id, {$push: {cards: newCard}})
+        res.status(201).json(newCard)
+    } catch (error) {
+        if(error.code === 11000){
+            res.status(500).json({error: "title already used on another steeze card"})
+        }else {
+            res.status(500);
+        }
     }
 }
-
 //update card
 const update = async (req,res)=>{
-    const{postedBy,title,text,image,video} = req.body
+    const{postedBy,text,image,video} = req.body;
+    let {title,slug} = req.body;
     const userId = req.user._id;
     const cardId = req.params.id;
-    console.log(cardId)
     try{
         const user = await User.findById(userId);
         let card = await Card.findOne({_id: cardId});
         if(user._id.toString() !== postedBy.toString()){res.status(400).json({error:"You cannot edit this card"})}
         if(!card){res.status(400).json({error:"card not found"})}
          else {
+            slug = Slug.slugify(title);
             card.title = title || card.title
             card.text = text || card.text;
+            card.slug = slug || card.slug;
             card.image = image || card.image;
             card.video = video || video.text;
             card = await card.save();
             res.status(200).json({card: card, message: "updated succesfully"});
         }
     }catch(error){
-        if(error.code === 11000){res.status(400).json({error:"title already used on another steeze card"})}
-        else{res.status(400).json({error:"server error"})}
+        if(error.code=== 11000){
+            { res.status(400).json({message: "card title already used"})}
+        }
     }
 }
 const getCard = async(req,res)=>{
-    const title = req.params.title;
+    const slug = req.params.slug;
     try{
-        const card = await Card.findOne({title});
+        const card = await Card.findOne({slug});
         return card ? res.status(200).json({message: card}):  res.status(400).json({error:"card not found"})
     }catch (e) {
 
     }
 }
 //delete card
+const deleteCard = async (req,res)=>{
+    try {
+        const slug = req.params.slug
+        const card = await Card.findOne({slug});
+        if(!card){res.status(400).json(({message:"card not found"}))}
+        if(req.user._id.toString() !== card.postedBy.toString()){
+            res.status(400).json({error:"you cannot delete this card"})
+            return;
+        }
+        await Card.findOneAndDelete({slug: slug});
+        await User.findByIdAndUpdate(userId, {$pull: {cards: post._id}})
+
+        res.status(200).json({message: 'card deleted successfully'});
+    } catch (error) {
+        if(error.code ==='ERR_HTTP_HEADERS_SENT'){
+            return;
+        }
+    }
+}
 
 
-
-
-module.exports = {create,update,getCard};
+module.exports = {create,update,getCard,deleteCard};

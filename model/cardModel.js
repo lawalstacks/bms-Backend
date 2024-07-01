@@ -8,13 +8,15 @@ const cardSchema = mongoose.Schema({
     },
     title:{
       type: String,
-      maxLength: 10,
-      unique: true,
-        required: true,
+        required: true
     },
     text:{
         type: String,
         maxLength: 500
+    },
+    slug:{
+        type: String,
+        unique: true
     },
     img:{
         type: String,
@@ -22,6 +24,10 @@ const cardSchema = mongoose.Schema({
     video:{
         type: String,
     },
+    contributors:[{
+        type:mongoose.Schema.Types.ObjectId,
+        ref: 'Contributors'
+    }]
 
 },{timestamps:true});
 

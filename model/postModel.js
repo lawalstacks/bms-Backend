@@ -8,9 +8,11 @@ const postSchema = mongoose.Schema({
     },
     title:{
         type: String,
-        maxLength: 10,
     },
-
+    slug:{
+      type: String,
+      unique: true
+    },
     text:{
         type: String,
         maxLength: 500

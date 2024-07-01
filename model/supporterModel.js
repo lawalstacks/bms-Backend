@@ -1,5 +1,6 @@
 moonoose = require('mongoose');
 
+
 const supporterModel = mongoose.Schema({
     name:{
         type: String,
