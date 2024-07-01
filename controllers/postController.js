@@ -83,8 +83,7 @@ const deletePost = async (req,res)=> {
             return;
         }
         await Post.findOneAndDelete({slug: slug});
-        await User.findByIdAndUpdate(userId, {$pull: {posts: post._id}})
-
+        await User.findByIdAndUpdate(post.postedBy, {$pull: {posts: post._id}})
         res.status(200).json({message: 'post deleted successfully'});
     } catch (error) {
         if(error.code ==='ERR_HTTP_HEADERS_SENT'){

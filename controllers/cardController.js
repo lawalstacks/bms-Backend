@@ -88,7 +88,7 @@ const deleteCard = async (req,res)=>{
             return;
         }
         await Card.findOneAndDelete({slug: slug});
-        await User.findByIdAndUpdate(userId, {$pull: {cards: post._id}})
+        await User.findByIdAndUpdate(card.postedBy, {$pull: {cards: post._id}})
 
         res.status(200).json({message: 'card deleted successfully'});
     } catch (error) {
