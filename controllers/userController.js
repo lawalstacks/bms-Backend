@@ -81,6 +81,7 @@ const followUnfollow = async (req,res)=>{
         if(usertoFollow._id.toString() === userFollowing._id.toString()){
             res.status(400).json({error: "you cannot follow your self"})
         }
+
         const isFollowing = await userFollowing.following.includes(id);
         if(isFollowing){
             await User.findByIdAndUpdate(req.user._id,{$pull: {following: id }})

@@ -31,7 +31,7 @@ const create = async (req,res)=> {
             video
         })
             await newPost.save();
-            await User.findByIdAndUpdate(user._id, {$push: {cards: newPost._id}})
+            await User.findByIdAndUpdate(user._id, {$push: {posts: newPost}})
             res.status(201).json(newPost)
     } catch (error) {
         res.status(500).json({error: "unable to create post"})
@@ -62,6 +62,8 @@ const update = async (req,res)=>{
         res.status(400);
     }
 }
+
+//get Post
 const getPost = async (req,res)=>{
     const slug = req.params.slug;
     try{
@@ -92,9 +94,30 @@ const deletePost = async (req,res)=> {
     }
 }
 
+//like unlike post
+const likeUnlikePost = async (req,res)=>{
+try {
+    const slug = req.params.slug;
+    const post = await Post.findOne({slug});
+    console.log(post)
+    if(!post){res.status(400).json({error: "post not found"})}
+    const user = await User.findById(post.postedBy);
+    const isLiking = await post.likes.includes(user._id);
+    if(!isLiking){
+        await Post.findByIdAndUpdate(post._id,{$push: {likes: user._id }})
+            res.status(200).json({message:"post unliked successfully"})
+    }else{
+        await Post.findByIdAndUpdate(post._id,{$pull: {likes: user._id }})
+        res.status(200).json({message:"post liked successfully"})
+    }
+}catch(error){
+console.log(error)
+}
+}
 module.exports = {
     create,
     update,
     getPost,
-    deletePost
+    deletePost,
+    likeUnlikePost
 }

@@ -23,10 +23,10 @@ const postSchema = mongoose.Schema({
     video:{
         type: String,
     },
-    likes:{
-        type: Number,
-        default: 0
-    },
+    likes:[{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }],
     replies:[{
         userId:{
             type: mongoose.Schema.Types.ObjectId,
