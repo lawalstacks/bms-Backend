@@ -5,6 +5,7 @@ const protectedRoute = require('../middlewares/protectedRoute')
 
 
 router.post('/signup',userAuth.signupUser);
+router.post('/auth/google',userAuth.googleAuth);
 router.post('/login',userAuth.loginUser);
 router.post('/logout',userAuth.logoutUser);
 router.post('/follow/:id',protectedRoute, userAuth.followUnfollow);

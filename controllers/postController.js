@@ -104,7 +104,7 @@ try {
     const user = await User.findById(post.postedBy);
     const isLiking = await post.likes.includes(user._id);
     if(!isLiking){
-        await Post.findByIdAndUpdate(post._id,{$push: {likes: user._id }})
+        await Post.findByIdAndUpdate(post._id,{$push: {likes: user}})
             res.status(200).json({message:"post unliked successfully"})
     }else{
         await Post.findByIdAndUpdate(post._id,{$pull: {likes: user._id }})

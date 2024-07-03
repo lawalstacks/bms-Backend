@@ -2,6 +2,7 @@ const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
 const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie')
 
+
 //signup
 const signupUser = async (req,res)=>{
     try{
@@ -36,6 +37,13 @@ const signupUser = async (req,res)=>{
         res.status(500).json({error: error})
         console.log(error);
     }
+}
+
+//google auth
+
+const googleAuth = async (req,res) =>{
+
+
 }
 
 //login
@@ -148,5 +156,7 @@ module.exports = {
     logoutUser,
     followUnfollow,
     updateProfile,
-    getProfile
+    getProfile,
+    googleAuth
+
 }
