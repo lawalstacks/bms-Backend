@@ -49,10 +49,10 @@ const googleAuth = async (req,res) =>{
 //login
 const loginUser = async (req,res)=>{
     try{
-        const {username,password} = req.body;
-        const user = await User.findOne({username});
-        const isPassword =await bcrypt.compare(password,user.password);
-        if(!user || !isPassword) return res.status(400).json("invalid username or password");
+        const {email,password} = req.body;
+        const user = await User.findOne({email});
+        const isPassword =await bcrypt.compare(password,user?.password || "");
+        if(!user || !isPassword) return res.status(400).json("invalid email or password");
         genTokenandSetCookie(user._id,res);
         res.status(201).json({
             _id: user._id,
