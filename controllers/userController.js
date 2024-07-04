@@ -9,10 +9,13 @@ const signupUser = async (req,res)=>{
         const {username,email,password} = req.body;
         const user = await User.findOne({$or:[{email},{username}]});
 
-        if(user) {return res.status(400).json({error:"user already exists"})}
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password,salt);
+        if(user) {res.status(400).json({error:"user already exists"})}
+        if(!username || !email || password.length < 6){res.status(400).json({error:"invalid details, password must be 6 "})}
+        let hashedPassword;
+        if(password) {
+            const salt = await bcrypt.genSalt(10);
+            hashedPassword = await bcrypt.hash(password, salt);
+        }
 
         const newUser = new User({
             username,
@@ -27,15 +30,12 @@ const signupUser = async (req,res)=>{
                 _id: newUser._id,
                 username: newUser.username,
                 email: newUser.email,
-                password: newUser.password
-
+                password: newUser.password,
+                message:`${newUser.username} signed up successfully`
             })
-        }else{
-            res.status(400).json({error: "invalid user data"})
         }
     }catch (error) {
-        res.status(500).json({error: error})
-        console.log(error);
+        return res.status(500);
     }
 }
 
@@ -51,18 +51,18 @@ const loginUser = async (req,res)=>{
     try{
         const {email,password} = req.body;
         const user = await User.findOne({email});
-        const isPassword =await bcrypt.compare(password,user?.password || "");
-        if(!user || !isPassword) return res.status(400).json("invalid email or password");
+        const isPassword =await bcrypt.compare(password,user?.password|| "");
+        if(!user || !isPassword) {
+           res.status(400).json({error:"invalid login details"})
+        }
         genTokenandSetCookie(user._id,res);
         res.status(201).json({
             _id: user._id,
             username: user.username,
             email: user.email,
-            password: user.password
-        })
+        message:"Login successful"})
     }catch (error){
-        res.status(500).json({error: error})
-        console.log(error);
+        res.status(400);
     }
 }
 
