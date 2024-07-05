@@ -1,6 +1,6 @@
 const Post = require('../model/postModel');
 const User = require('../model/userModel');
-const Slug = require('../utils/helpers/slugify')
+const Slug = require('slugify-mongodb');
 
 //creat posts
 const create = async (req,res)=> {

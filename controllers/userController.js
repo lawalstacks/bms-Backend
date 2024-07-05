@@ -1,69 +1,113 @@
 const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
+const axios = require('axios');
 const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie')
 
 
 //signup
-const signupUser = async (req,res)=>{
-    try{
-        const {username,email,password} = req.body;
-        const user = await User.findOne({$or:[{email},{username}]});
-
-        if(user) {res.status(400).json({error:"user already exists"})}
-        if(!username || !email || password.length < 6){res.status(400).json({error:"invalid details, password must be 6 "})}
-        let hashedPassword;
-        if(password) {
-            const salt = await bcrypt.genSalt(10);
-            hashedPassword = await bcrypt.hash(password, salt);
-        }
-
-        const newUser = new User({
-            username,
-            email,
-            password: hashedPassword
-        })
-
-       await newUser.save();
-        if(newUser){
-            genTokenandSetCookie(newUser._id,res);
-            res.status(201).json({
-                _id: newUser._id,
-                username: newUser.username,
-                email: newUser.email,
-                password: newUser.password,
-                message:`${newUser.username} signed up successfully`
-            })
-        }
-    }catch (error) {
-        return res.status(500);
-    }
+const googleAuth = async(req,res)=> {
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&response_type=code&scope=profile email`;
+   console.log("working")
+    res.redirect(url);
 }
 
-//google auth
+const googleCallback = async(req,res) =>{
+    const {code} = req.query;
+    try{
+        const {data} = await axios.post('<https://oauth2.googleapis.com/token>', {
+            client_id: process.env.CLIENT_ID,
+            client_secret: process.env.CLIENT_SECRET,
+            code,
+            redirect_uri: process.env.REDIRECT_URI,
+            grantType: 'authorization_code',
+        });
 
-const googleAuth = async (req,res) =>{
+        const {access_token, id_token} = data;
+         const {data: profile} = await axios.get('<https://accounts.google.com/o/oauth2/v1/userinfo>', {
+            headers: {
+                "Authorization": `Bearer ${access_token}`
+            }
+        })
+        console.log(profile);
+         return res.status(200).json({message:profile});
+            /*const username = profile.given_name;
+            const name = profile.given_name + profile.family_name;
+            const email =profile.email;
+            const profilePic = profile.picture;
 
+            const alreadyExist = await User.findOne({ email })
 
+            if (alreadyExist) {
+              return  res.send(200).json({alreadyExist,message:"Login Successful"})
+            }
+            const newUserGoogle = await User.create({ username, name, email, profilePic: profilePic })
+            if (newUserGoogle) {
+                genTokenandSetCookie(newUserGoogle._id, res);
+            }
+            res.status(200).json({ newUserGoogle, message: "signed up successfully" })
+*/
+    }catch (e) {
+        res.status(400).json({ error: "invalid info" })
+    }
+}
+const signupUser = async (req,res)=>{
+        try {
+            const { username, email, password } = req.body;
+            const user = await User.findOne({ $or: [{ email }, { username }] });
+
+            if (user) {
+               return  res.status(400).json({ error: "user already exists" })
+            }
+            if (!username || !email || password.length < 6) {
+               return res.status(400).json({ error: "invalid details, password must be 6 " })
+            }
+            let hashedPassword;
+            if (password) {
+                const salt = await bcrypt.genSalt(10);
+                hashedPassword = await bcrypt.hash(password, salt);
+            }
+
+            const newUser = new User({
+                username,
+                email,
+                password: hashedPassword
+            })
+
+            await newUser.save();
+            if (newUser) {
+                genTokenandSetCookie(newUser._id, res);
+                res.status(201).json({
+                    _id: newUser._id,
+                    username: newUser.username,
+                    email: newUser.email,
+                    password: newUser.password,
+                    message: `${newUser.username} signed up successfully`
+                })
+            }
+        } catch (error) {
+            return res.status(500);
+        }
 }
 
 //login
 const loginUser = async (req,res)=>{
-    try{
-        const {email,password} = req.body;
-        const user = await User.findOne({email});
-        const isPassword =await bcrypt.compare(password,user?.password|| "");
-        if(!user || !isPassword) {
-           res.status(400).json({error:"invalid login details"})
+        try {
+            const { email, password } = req.body;
+            const user = await User.findOne({ email });
+            const isPassword = await bcrypt.compare(password, user?.password || "");
+            if (!user || !isPassword) {
+                return res.status(400).json({ error: "invalid login details" })
+            }
+            genTokenandSetCookie(user._id, res);
+            res.status(201).json({
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                message: "Login successful"
+            })
+        } catch (error) {
+            res.status(400);
         }
-        genTokenandSetCookie(user._id,res);
-        res.status(201).json({
-            _id: user._id,
-            username: user.username,
-            email: user.email,
-        message:"Login successful"})
-    }catch (error){
-        res.status(400);
-    }
 }
 
 //logout
@@ -157,6 +201,6 @@ module.exports = {
     followUnfollow,
     updateProfile,
     getProfile,
-    googleAuth
-
+    googleAuth,
+    googleCallback
 }
