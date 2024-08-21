@@ -92,6 +92,7 @@ const deleteCard = async (req,res)=>{
 
         res.status(200).json({message: 'card deleted successfully'});
     } catch (error) {
+
         if(error.code ==='ERR_HTTP_HEADERS_SENT'){
             return;
         }

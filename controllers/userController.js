@@ -1,12 +1,11 @@
-const User = require('../model/userModel');
+                                                                                                                                const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie')
 
-
 //signup
 const googleAuth = async(req,res)=> {
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&response_type=code&scope=profile email`;
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&response_type=code&scope=profile email`;
    console.log("working")
     res.redirect(url);
 }
@@ -14,49 +13,58 @@ const googleAuth = async(req,res)=> {
 const googleCallback = async(req,res) =>{
     const {code} = req.query;
     try{
-        const {data} = await axios.post('<https://oauth2.googleapis.com/token>', {
-            client_id: process.env.CLIENT_ID,
-            client_secret: process.env.CLIENT_SECRET,
+        const {data} = await axios.post('https://oauth2.googleapis.com/token', {
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
             code,
             redirect_uri: process.env.REDIRECT_URI,
             grantType: 'authorization_code',
         });
-
         const {access_token, id_token} = data;
-         const {data: profile} = await axios.get('<https://accounts.google.com/o/oauth2/v1/userinfo>', {
+         const {data: profile} = await axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${access_token}`, {
             headers: {
-                "Authorization": `Bearer ${access_token}`
+                "Authorization": `Bearer ${access_token}`,
             }
         })
-        console.log(profile);
-         return res.status(200).json({message:profile});
-            /*const username = profile.given_name;
-            const name = profile.given_name + profile.family_name;
-            const email =profile.email;
-            const profilePic = profile.picture;
+             const username = profile.given_name+"."+profile.family_name[0];
+             const name = profile.given_name +" "+ profile.family_name;
+             const email =profile.email;
+             const profilePic = profile.picture;
+             const password = Math.floor(Math.random() *(100000) + 123456)
+        console.log(password);
+             console.log(profilePic);
+             const alreadyExist = await User.findOne({ email })
+             if (alreadyExist) {
+               return  res.write('<p>User already exist <a href="http://localhost:5173/auth">Please login</a></p>')
+             }
+        let hashedPassword;
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            hashedPassword = await bcrypt.hash(password.toString(), salt);
+        }
+             const profileData = await User.create({ username, name, email, profilePic: profilePic,password:hashedPassword })
+             if (profileData) {
+               const script =`<script>localStorage.setItem('bms-user',JSON.stringify(${profileData}))
+                                             window.open('http://localhost:5173/overview');</script>`
 
-            const alreadyExist = await User.findOne({ email })
-
-            if (alreadyExist) {
-              return  res.send(200).json({alreadyExist,message:"Login Successful"})
-            }
-            const newUserGoogle = await User.create({ username, name, email, profilePic: profilePic })
-            if (newUserGoogle) {
-                genTokenandSetCookie(newUserGoogle._id, res);
-            }
-            res.status(200).json({ newUserGoogle, message: "signed up successfully" })
-*/
+                 res.send(script);
+             }
+             //res.status(200).json({ newUserGoogle, message: "signed up successfully" })
     }catch (e) {
-        res.status(400).json({ error: "invalid info" })
+        console.log(e);
     }
 }
 const signupUser = async (req,res)=>{
         try {
             const { username, email, password } = req.body;
-            const user = await User.findOne({ $or: [{ email }, { username }] });
-
+            const user = await User.findOne({ username });
+            const emailExist = await User.findOne({email});
             if (user) {
-               return  res.status(400).json({ error: "user already exists" })
+              console.log(user);
+               return  res.status(400).json({ error: "username already exists" })
+            }
+            if(emailExist){
+              return res.status(400).json({error:"email already exists"});
             }
             if (!username || !email || password.length < 6) {
                return res.status(400).json({ error: "invalid details, password must be 6 " })
@@ -72,20 +80,27 @@ const signupUser = async (req,res)=>{
                 email,
                 password: hashedPassword
             })
-
             await newUser.save();
             if (newUser) {
                 genTokenandSetCookie(newUser._id, res);
-                res.status(201).json({
+               return  res.status(201).json({
                     _id: newUser._id,
                     username: newUser.username,
                     email: newUser.email,
                     password: newUser.password,
-                    message: `${newUser.username} signed up successfully`
+                    message: `${newUser.username} signed up successfully`,
+                 balance:""|| 0,
                 })
             }
         } catch (error) {
-            return res.status(500);
+          if(error.reason.type === 'ReplicaSetNoPrimary'){
+            return res.status(400).json({error:"username or email already exist"});
+          }
+          else{
+            console.log(error)
+            return res.status(400);
+          }
+
         }
 }
 

@@ -6,17 +6,18 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser')
 require('./utils/helpers/passport-setup');
 
-const PORT = process.env.PORT||3000;
+const PORT = process.env.PORT || 8080 ;
 //connect database
 connectDb();
 
 //built in middleware
 const app = express();
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true
-}));
-
+const corsOptions ={
+  origin:['http://localhost:5173'],
+  credentials:true,            //access-control-allow-credentials:true
+  optionSuccessStatus:200
+}
+app.use(cors(corsOptions));
 app.use(express.json())
 app.use(express.urlencoded({extended:true}));
 app.use(cookieParser());
