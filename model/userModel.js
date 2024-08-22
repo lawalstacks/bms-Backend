@@ -55,7 +55,19 @@ const userSchema = mongoose.Schema({
     supporters:[{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Supporter',
-    }]
+    }],
+    isVerified:{
+        type: Boolean,
+        default: false
+    },
+    lastLogin:{
+      type: Date,
+        default: Date.now()
+    },
+    resetPasswordToken: String,
+    resetPasswordExpiresAt: Date,
+    verificationToken: String,
+    verificationTokenExpiresAt: Date,
 },{timestamps: true})
 
 const User = mongoose.model('User', userSchema);

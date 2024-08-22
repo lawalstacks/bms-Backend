@@ -1,7 +1,10 @@
-                                                                                                                                const User = require('../model/userModel');
+const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const axios = require('axios');
-const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie')
+const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie');
+const sendEmail = require('../mailtrap/emails');
+const { sendWelcomeEmail, sendPasswordResetEmail, sendResetSuccessEmail } = require('../mailtrap/emails');
 
 //signup
 const googleAuth = async(req,res)=> {
@@ -69,39 +72,35 @@ const signupUser = async (req,res)=>{
             if (!username || !email || password.length < 6) {
                return res.status(400).json({ error: "invalid details, password must be 6 " })
             }
-            let hashedPassword;
-            if (password) {
-                const salt = await bcrypt.genSalt(10);
-                hashedPassword = await bcrypt.hash(password, salt);
-            }
+
+            const salt = await bcrypt.genSalt(10);
+            hashedPassword = await bcrypt.hash(password, salt);
+            const verificationToken = Math.floor(100000 + Math.random()*9000000).toString();
 
             const newUser = new User({
                 username,
                 email,
-                password: hashedPassword
+                password: hashedPassword,
+              verificationToken,
+              verificationTokenExpiresAt: Date.now()+24 *60 *60 * 1000
             })
             await newUser.save();
             if (newUser) {
                 genTokenandSetCookie(newUser._id, res);
-               return  res.status(201).json({
-                    _id: newUser._id,
-                    username: newUser.username,
-                    email: newUser.email,
-                    password: newUser.password,
-                    message: `${newUser.username} signed up successfully`,
-                 balance:""|| 0,
+               await sendEmail.sendVerificationEmail(newUser.email, verificationToken)
+               res.status(201).json({
+                 success: true,
+                 message: `${newUser.username} signed up successfully`,
+                 newUser:{
+                      ...newUser._doc,
+                   password: undefined,
+                 }
                 })
             }
         } catch (error) {
-          if(error.reason.type === 'ReplicaSetNoPrimary'){
-            return res.status(400).json({error:"username or email already exist"});
-          }
-          else{
             console.log(error)
             return res.status(400);
           }
-
-        }
 }
 
 //login
@@ -114,11 +113,16 @@ const loginUser = async (req,res)=>{
                 return res.status(400).json({ error: "invalid login details" })
             }
             genTokenandSetCookie(user._id, res);
+
+            user.lastLogin =new Date();
+            await user.save();
             res.status(201).json({
-                _id: user._id,
-                username: user.username,
-                email: user.email,
-                message: "Login successful"
+                success: true,
+              message:"Logged in successfully",
+                user:{
+                  ...user._doc,
+                  password: undefined,
+                }
             })
         } catch (error) {
             res.status(400);
@@ -136,6 +140,84 @@ const logoutUser =(req,res)=>{
     }
 }
 
+const verifyEmail = async (req,res)=>{
+  const {code} = req.body;
+  try{
+    const user = await User.findOne({
+      verificationToken: code,
+      verificationTokenExpiresAt: {$gt: Date.now()}
+    })
+    if(!user){
+      return res.status(400).json({success: false, message:"Invalid or expired verification code"})
+    }
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpiresAt = undefined;
+    await user.save();
+    await sendWelcomeEmail(user.email,user.username)
+    res.status(201).json({
+      success: true,
+      message:"Email verified successfully",
+      user:{
+        ...user._doc,
+        isVerified: true,
+        password: undefined,
+      }
+    })
+  }catch (error){
+    console.log(error)
+  }
+}
+
+const forgotPassword = async (req,res) =>{
+  const {email} = req.body;
+  try{
+    const user = await User.findOne({email})
+  if(!user){
+    return res.status(400).json({success: false, message:"user not found"});
+  }
+  const resetToken = crypto.randomBytes(20).toString("hex");
+  const resetTokenExpiresAt = Date.now() + 1 * 60  * 60 * 1000;
+
+  user.resetPasswordToken = resetToken;
+  user.resetPasswordExpiresAt = resetTokenExpiresAt;
+
+  await user.save();
+
+  // SEND EMAIL
+    await sendPasswordResetEmail(user.email, `${process.env.CLIENT_URL}/reset-password/${resetToken}`)
+  res.status(200).json({message:"Password reset link has been sent to your email"});
+  }catch (error) {
+    console.log("error in forgot password", error);
+    res.status(400).json({success: false, message: error.message});
+    console.log(error)
+  }
+}
+ const resetPassword = async (req,res)=>{
+  try{
+    const {token} = req.params;
+    const {password} = req.body;
+    const user = await User.findOne({
+      resetPasswordToken:token,
+      resetPasswordExpiresAt:{$gt: Date.now()}})
+    if(!user){
+      return res.status(400).json({message:"invalid reset token"})
+    }
+    const salt = await bcrypt.genSalt(10);
+    hashedPassword = await bcrypt.hash(password, salt);
+    user.password = hashedPassword;
+    user.resetPasswordToken =undefined;
+    user.resetPasswordExpiresAt=undefined;
+    await user.save();
+    await sendResetSuccessEmail(user.email);
+    res.status(200).json({message:"Password reset successfull", user:{
+      ...user._doc,
+        password: undefined
+      }})
+  }catch (e) {
+console.log(e);
+  }
+ }
 //followunfollow
 const followUnfollow = async (req,res)=>{
     try{
@@ -213,6 +295,9 @@ module.exports = {
     signupUser,
     loginUser,
     logoutUser,
+    verifyEmail,
+    forgotPassword,
+    resetPassword,
     followUnfollow,
     updateProfile,
     getProfile,
