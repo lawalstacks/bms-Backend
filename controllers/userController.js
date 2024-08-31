@@ -6,70 +6,174 @@ const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie');
 const sendEmail = require('../mailtrap/emails');
 const { sendWelcomeEmail, sendPasswordResetEmail, sendResetSuccessEmail } = require('../mailtrap/emails');
 
+
 //signup
-const googleAuth = async(req,res)=> {
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${process.env.REDIRECT_URI}&response_type=code&scope=profile email`;
-   console.log("working")
-    res.redirect(url);
-}
-
-const googleCallback = async(req,res) =>{
-    const {code} = req.query;
-    try{
-        const {data} = await axios.post('https://oauth2.googleapis.com/token', {
-            client_id: process.env.GOOGLE_CLIENT_ID,
-            client_secret: process.env.GOOGLE_CLIENT_SECRET,
-            code,
-            redirect_uri: process.env.REDIRECT_URI,
-            grantType: 'authorization_code',
-        });
-        const {access_token, id_token} = data;
-         const {data: profile} = await axios.get(`https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${access_token}`, {
-            headers: {
-                "Authorization": `Bearer ${access_token}`,
-            }
-        })
-             const username = profile.given_name+"."+profile.family_name[0];
-             const name = profile.given_name +" "+ profile.family_name;
-             const email =profile.email;
-             const profilePic = profile.picture;
-             const password = Math.floor(Math.random() *(100000) + 123456)
-        console.log(password);
-             console.log(profilePic);
-             const alreadyExist = await User.findOne({ email })
-             if (alreadyExist) {
-               return  res.write('<p>User already exist <a href="http://localhost:5173/auth">Please login</a></p>')
-             }
-        let hashedPassword;
-        if (password) {
-            const salt = await bcrypt.genSalt(10);
-            hashedPassword = await bcrypt.hash(password.toString(), salt);
+const loginUser = async(req, res) => {
+  if(req.body.googleAccessToken){
+    // gogole-auth
+    const {googleAccessToken} = req.body;
+    axios
+      .get("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: {
+          "Authorization": `Bearer ${googleAccessToken}`
         }
-             const profileData = await User.create({ username, name, email, profilePic: profilePic,password:hashedPassword })
-             if (profileData) {
-               const script =`<script>localStorage.setItem('bms-user',JSON.stringify(${profileData}))
-                                             window.open('http://localhost:5173/overview');</script>`
-
-                 res.send(script);
-             }
-             //res.status(200).json({ newUserGoogle, message: "signed up successfully" })
-    }catch (e) {
-        console.log(e);
+      })
+      .then(async response => {
+        const name = response.data.given_name + " " + response.data.family_name;
+        const username = response.data.given_name;
+        const email = response.data.email;
+        const picture = response.data.picture;
+        const user = await User.findOne({email})
+        if (!user) {
+          return res.status(400).json({ error: "User don't exist!" })
+        }
+        genTokenandSetCookie(user._id, res);
+        user.lastLogin =new Date();
+        await user.save();
+        res.status(201).json({
+          success: true,
+          message:"Logged in successfully",
+          user:{
+            ...user._doc,
+            password: undefined,
+          }
+        })
+      })
+      .catch(err => {
+        res
+          .status(400)
+          .json({error: "Invalid access token!"})
+      })
+  }else{
+    // normal-auth
+    const {email, password} = req.body;
+    if (email === "" || password === "") {
+      return res.status(400).json({ error: "Invalid field!" });
     }
+    try {
+      const user = await User.findOne({ email })
+      if (!user) {
+       return res.status(400).json({ error: "User don't exist!" })
+      }
+      genTokenandSetCookie(user._id, res);
+      user.lastLogin = new Date();
+      await user.save();
+      res.status(201).json({
+        success: true,
+        message: "Logged in successfully",
+        user: {
+          ...user._doc,
+          password: undefined,
+        }
+      })
+    }catch(error){
+      console.log(error)
+    }
+    }
+  }
+
+const signupUser = async(req, res) => {
+  if (req.body.googleAccessToken) {
+    const {googleAccessToken} = req.body;
+    axios
+      .get("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: {
+          "Authorization": `Bearer ${googleAccessToken}`
+        }
+      })
+      .then(async response => {
+        const username = response.data.given_name +" "+response.data.family_name;
+        const email = response.data.email;
+        const picture = response.data.picture;
+        const isUser = await User.findOne({email})
+        if (isUser) {
+
+          return res.status(400).json({ message: "User already exist!" })
+        }
+        if (username==="" || email==="" || password.length < 6) {
+          return res.status(400).json({ error: "invalid details, password must be 6 " })
+        }
+        const salt = await bcrypt.genSalt(10);
+        hashedPassword = await bcrypt.hash(password, salt);
+        const verificationToken = Math.floor(100000 + Math.random()*9000000).toString();
+        const user = new User({
+          username,
+          email,
+          password: hashedPassword,
+          verificationToken,
+          verificationTokenExpiresAt: Date.now()+24 *60 *60 * 1000
+        })
+        await user.save();
+        if (user) {
+          genTokenandSetCookie(user._id, res);
+          await sendEmail.sendVerificationEmail(user.email, verificationToken)
+          res.status(201).json({
+            success: true,
+            message: `${newUser.username} signed up successfully`,
+            newUser:{
+              ...user._doc,
+              password: undefined,
+            }
+          })
+        }
+      })
+      .catch(err => {
+        res.status(400).json({message: "Invalid access token!"})
+      })
+  } else {
+    // normal form signup
+    const {email, password, username} = req.body;
+    try {
+      if (email === "" || password === ""  || username === "") {
+        return res.status(400).json({ message: "Invalid field!" })
+      }
+      const user = await User.findOne({email})
+      if (user) {
+        return res.status(400).json({ message: "user already exist!" })
+      }
+      if (username==="" || email==="" || password.length < 6) {
+        return res.status(400).json({ error: "invalid details, password must be 6 " })
+      }
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+      const verificationToken = Math.floor(100000 + Math.random()*9000000).toString();
+      const newUser = new User({
+        username,
+        email,
+        password: hashedPassword,
+        verificationToken,
+        verificationTokenExpiresAt: Date.now()+24 *60 *60 * 1000
+      })
+      await newUser.save();
+      if (newUser) {
+        genTokenandSetCookie(newUser._id, res);
+        await sendEmail.sendVerificationEmail(newUser.email, verificationToken)
+        res.status(201).json({
+          success: true,
+          message: `${newUser.username} signed up successfully`,
+          newUser:{
+            ...newUser._doc,
+            password: undefined,
+          }
+        })
+      }
+    } catch (error) {
+      console.log(error)
+      return res.status(400);
+    }
+  }
 }
-const signupUser = async (req,res)=>{
+
+/*const signupUser = async (req,res)=>{
         try {
             const { username, email, password } = req.body;
-            const user = await User.findOne({ username });
-            const emailExist = await User.findOne({email});
+            const user = await User.findOne({ email});
+           // const emailExist = await User.findOne({email});
             if (user) {
               console.log(user);
                return  res.status(400).json({ error: "username already exists" })
             }
-            if(emailExist){
-              return res.status(400).json({error:"email already exists"});
-            }
-            if (!username || !email || password.length < 6) {
+            if (username==="" || email==="" || password.length < 6) {
                return res.status(400).json({ error: "invalid details, password must be 6 " })
             }
 
@@ -128,7 +232,7 @@ const loginUser = async (req,res)=>{
             res.status(400);
         }
 }
-
+*/
 //logout
 const logoutUser =(req,res)=>{
     try{
@@ -301,6 +405,5 @@ module.exports = {
     followUnfollow,
     updateProfile,
     getProfile,
-    googleAuth,
-    googleCallback
+
 }

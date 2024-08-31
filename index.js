@@ -10,6 +10,8 @@ const PORT = process.env.PORT || 8080 ;
 //connect database
 connectDb();
 
+
+
 //built in middleware
 const app = express();
 const corsOptions ={
@@ -18,11 +20,10 @@ const corsOptions ={
   optionSuccessStatus:200
 }
 app.use(cors(corsOptions));
-app.use(express.json())
+app.use(express.json());
 app.use(express.urlencoded({extended:true}));
 app.use(cookieParser());
 
-app.use('/auth', require('./routes/socialRoutes'));
 app.use('/api', require('./routes/userRoutes'));
 app.use('/api/card',require('./routes/cardRoutes'));
 app.use('/api/post',require('./routes/postRoutes'));
