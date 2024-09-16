@@ -1,42 +1,70 @@
 const Card = require('../model/cardModel');
 const User = require('../model/userModel');
-const Slug = require("../utils/helpers/slugify");
+const Slug = require('slugify-mongodb');
+const cloudinary = require('cloudinary').v2
 
 //creat cards
 const create = async (req,res)=> {
-    const {postedBy, text, title, img, video} = req.body
+    const {postedBy, title,details,color,goalAmount} = req.body
+    let {media} = req.body;
+    let optimizeUrl;
     try {
-        if (!postedBy || !text || !title) {
-            res.status(400).json({error: 'posted by, title and text field are required'});
+        if (!title) {
+           return res.status(400).json({error: 'posted by, title and text field are required'});
         }
         const user = await User.findById(postedBy);
         if (!user) {
-            res.status(400).json({error: 'user not found'});
+         return   res.status(400).json({error: 'user not found'});
         }
         if (user._id.toString() !== req.user._id.toString()) {
-            res.status(400).json({error: "unauthorized to create steeze post"})
-            return;
+           return res.status(400).json({error: "unauthorized to create steeze post"})
         }
-        const maxLength = 500;
-        if (text.length > maxLength) {
-            res.status(400).json({error: 'maximum text character is 500'});
+        const maxLength = 100;
+        if (details?.length > maxLength) {
+            return res.status(400).json({error: 'maximum text character is 500'});
+        }
+        if(media){
+
+            if(user.media){
+                cloudinary.uploader.destroy(user.media.split('/').pop().split('.')[0]);
+            }
+                const uploadedResponse = await cloudinary.uploader.upload(media, {
+                    public_id: "cardMedia",
+                    resource_type: 'auto',
+                    timeout: 600000,
+                    chunk_size: 6000000
+                }, function(error, result) {
+
+                });
+                media = uploadedResponse.secure_url
+                // Optimize delivery by resizing and applying auto-format and auto-quality
         }
         let slug = Slug.slugify(title);
         const newCard = new Card({
             postedBy,
             title,
             slug,
-            text,
-            img,
-            video
+            details,
+            media: media || "",
+            color,
+            goalAmount,
         })
         await newCard.save();
         await User.findByIdAndUpdate(user._id, {$push: {cards: newCard}})
-        res.status(201).json(newCard)
+        console.log(newCard)
+        res.status(200).json({
+            success: true,
+            message:"Card created successfully!😍"
+        ,user:{
+                ...user._doc
+            }
+
+        })
     } catch (error) {
         if(error.code === 11000){
             res.status(500).json({error: "title already used on another steeze card"})
         }else {
+            console.log(error)
             res.status(500);
         }
     }
@@ -74,7 +102,7 @@ const getCard = async(req,res)=>{
         const card = await Card.findOne({slug});
         return card ? res.status(200).json({message: card}):  res.status(400).json({error:"card not found"})
     }catch (e) {
-
+        console.log(e)
     }
 }
 //delete card

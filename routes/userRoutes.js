@@ -11,5 +11,5 @@ router.post("/forgot-password",userAuth.forgotPassword);
 router.post("/reset-password/:token",userAuth.resetPassword);
 router.post('/follow/:id',protectedRoute, userAuth.followUnfollow);
 router.post('/update/:id', protectedRoute, userAuth.updateProfile);
-router.get('/:username',userAuth.getProfile);
+router.get('/:query',userAuth.getProfile);
 module.exports = router;

@@ -44,10 +44,38 @@ const userSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    cards:[{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Card'
-    }],
+    cards:[
+      {
+          cardId:{
+              type: mongoose.Schema.Types.ObjectId,
+              ref: 'Card',
+          },
+          title:{
+              type: String,
+              required: true
+          },
+          details:{
+              type: String,
+              maxLength: 500
+          },
+          slug:{
+              type: String,
+              unique: true
+          },
+          media:{
+              type: String,
+          },
+          contributors:[{
+              type:mongoose.Schema.Types.ObjectId,
+              ref: 'Contributors'
+          }],
+          color:{
+              type: String
+          },
+          goalAmount:{
+              type: Number
+          }
+      },{createdAt:Date }],
     posts:[{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

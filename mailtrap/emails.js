@@ -56,7 +56,6 @@ const sendPasswordResetEmail = async (email, resetURL) => {
     });
   } catch (error) {
     console.error(`Error sending password reset email`, error);
-
     throw new Error(`Error sending password reset email: ${error}`);
   }
 };

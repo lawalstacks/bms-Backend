@@ -2,10 +2,10 @@ const User = require('../model/userModel');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const axios = require('axios');
+const mongoose = require('mongoose');
 const genTokenandSetCookie = require('../utils/helpers/genTokenandSetCookie');
 const sendEmail = require('../mailtrap/emails');
 const { sendWelcomeEmail, sendPasswordResetEmail, sendResetSuccessEmail } = require('../mailtrap/emails');
-
 
 //signup
 const loginUser = async(req, res) => {
@@ -53,19 +53,22 @@ const loginUser = async(req, res) => {
     try {
       const user = await User.findOne({ email })
       if (!user) {
-       return res.status(400).json({ error: "User don't exist!" })
+       return res.status(400).json({ error: "Invalid username or password" })
       }
-      genTokenandSetCookie(user._id, res);
-      user.lastLogin = new Date();
-      await user.save();
-      res.status(201).json({
-        success: true,
-        message: "Logged in successfully",
-        user: {
-          ...user._doc,
-          password: undefined,
-        }
-      })
+      const isPasswordCorrect = await bcrypt.compare(password, user.password)
+      if(isPasswordCorrect) {
+        genTokenandSetCookie(user._id, res);
+        user.lastLogin = new Date();
+        await user.save();
+        res.status(201).json({
+          success: true,
+          message: "Logged in successfully",
+          user: {
+            ...user._doc,
+            password: undefined,
+          }
+        })
+      }
     }catch(error){
       console.log(error)
     }
@@ -82,12 +85,12 @@ const signupUser = async(req, res) => {
         }
       })
       .then(async response => {
-        const username = response.data.given_name +" "+response.data.family_name;
+        const username = response.data.given_name
         const email = response.data.email;
         const picture = response.data.picture;
         const isUser = await User.findOne({email})
-        if (isUser) {
 
+        if (isUser) {
           return res.status(400).json({ message: "User already exist!" })
         }
         if (username==="" || email==="" || password.length < 6) {
@@ -109,7 +112,7 @@ const signupUser = async(req, res) => {
           await sendEmail.sendVerificationEmail(user.email, verificationToken)
           res.status(201).json({
             success: true,
-            message: `${newUser.username} signed up successfully`,
+            message: `${user.username} signed up successfully`,
             newUser:{
               ...user._doc,
               password: undefined,
@@ -127,8 +130,8 @@ const signupUser = async(req, res) => {
       if (email === "" || password === ""  || username === "") {
         return res.status(400).json({ message: "Invalid field!" })
       }
-      const user = await User.findOne({email})
-      if (user) {
+      const userExist = await User.findOne({email})
+      if (userExist) {
         return res.status(400).json({ message: "user already exist!" })
       }
       if (username==="" || email==="" || password.length < 6) {
@@ -136,23 +139,24 @@ const signupUser = async(req, res) => {
       }
       const salt = await bcrypt.genSalt(10);
       hashedPassword = await bcrypt.hash(password, salt);
-      const verificationToken = Math.floor(100000 + Math.random()*9000000).toString();
-      const newUser = new User({
+      const verificationToken = Math.floor(100000 + Math.random()*900000).toString();
+      const user = new User({
         username,
         email,
         password: hashedPassword,
         verificationToken,
         verificationTokenExpiresAt: Date.now()+24 *60 *60 * 1000
       })
-      await newUser.save();
-      if (newUser) {
-        genTokenandSetCookie(newUser._id, res);
-        await sendEmail.sendVerificationEmail(newUser.email, verificationToken)
+
+      await user.save();
+      if (user) {
+        genTokenandSetCookie(user._id, res);
+        await sendEmail.sendVerificationEmail(user.email, verificationToken)
         res.status(201).json({
           success: true,
-          message: `${newUser.username} signed up successfully`,
-          newUser:{
-            ...newUser._doc,
+          message: `${user.username} signed up successfully`,
+          user:{
+            ...user._doc,
             password: undefined,
           }
         })
@@ -238,22 +242,24 @@ const logoutUser =(req,res)=>{
     try{
         res.cookie("jwt","",{maxAge:1});
         res.status(200).json({message: "logout successful!"})
-
     }catch(err){
+
         res.status(500).json({error:err})
     }
 }
 
+
 const verifyEmail = async (req,res)=>{
-  const {code} = req.body;
+  const {verificationCode} = req.body;
   try{
     const user = await User.findOne({
-      verificationToken: code,
+      verificationToken: verificationCode,
       verificationTokenExpiresAt: {$gt: Date.now()}
     })
     if(!user){
       return res.status(400).json({success: false, message:"Invalid or expired verification code"})
     }
+
     user.isVerified = true;
     user.verificationToken = undefined;
     user.verificationTokenExpiresAt = undefined;
@@ -384,11 +390,19 @@ const updateProfile= async (req,res)=>{
 
 //getProfile
 const getProfile = async (req,res) =>{
+  const  {query}  = req.params;
     try{
-        const username = req.params.username
-        const user = await User.findOne({username}).select("-password");
-        return user ? res.status(200).json({message: user}):  res.status(400).json({error:"user not found"})
-
+      let user;
+      //query is userId
+      if(mongoose.Types.ObjectId.isValid(query)){
+        user = await User.findOne({_id:query }).select("-password");
+      }else{
+        user = await User.findOne({username:query }).select("-password");
+      }
+      if(!user){
+        return res.status(404).json({error: "user not found"});
+      }
+      res.status(200).json(user);
     }catch (error) {
         res.status(400).json({message: "server error"})
         console.log(error)

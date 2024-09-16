@@ -1,16 +1,16 @@
 const mongoose = require('mongoose');
 
-const cardSchema = mongoose.Schema({
+const shopSchema = mongoose.Schema({
     postedBy:{
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    title:{
+    productName:{
       type: String,
         required: true
     },
-    details:{
+    description:{
         type: String,
         maxLength: 500
     },
@@ -18,21 +18,21 @@ const cardSchema = mongoose.Schema({
         type: String,
         unique: true
     },
-    media:{
+    img:{
         type: String,
     },
-    contributors:[{
+    video:{
+        type: String,
+    },
+    buyer:[{
         type:mongoose.Schema.Types.ObjectId,
-        ref: 'Contributors'
+        ref: 'User'
     }],
-    color:{
-        type: String
-    },
-    goalAmount:{
+    price:{
         type: Number
-    },
+    }
 },{timestamps:true});
 
-const Card = mongoose.model('Card', cardSchema);
+const Shop = mongoose.model('Shop', shopSchema);
 
 module.exports = Card;
