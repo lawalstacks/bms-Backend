@@ -21,6 +21,9 @@ const cardSchema = mongoose.Schema({
     media:{
         type: String,
     },
+    fileType:{
+      type: String
+    },
     contributors:[{
         type:mongoose.Schema.Types.ObjectId,
         ref: 'Contributors'
@@ -34,5 +37,4 @@ const cardSchema = mongoose.Schema({
 },{timestamps:true});
 
 const Card = mongoose.model('Card', cardSchema);
-
 module.exports = Card;

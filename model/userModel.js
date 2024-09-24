@@ -65,6 +65,9 @@ const userSchema = mongoose.Schema({
           media:{
               type: String,
           },
+          fileType:{
+            type: String,
+          },
           contributors:[{
               type:mongoose.Schema.Types.ObjectId,
               ref: 'Contributors'

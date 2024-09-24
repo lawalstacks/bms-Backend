@@ -5,7 +5,7 @@ const cloudinary = require('cloudinary').v2
 
 //creat cards
 const create = async (req,res)=> {
-    const {postedBy, title,details,color,goalAmount} = req.body
+    const {postedBy, title,details,color,goalAmount,fileType} = req.body
     let {media} = req.body;
     let optimizeUrl;
     try {
@@ -36,7 +36,8 @@ const create = async (req,res)=> {
                 }, function(error, result) {
 
                 });
-                media = uploadedResponse.secure_url
+                media = uploadedResponse.secure_url;
+
                 // Optimize delivery by resizing and applying auto-format and auto-quality
         }
         let slug = Slug.slugify(title);
@@ -45,7 +46,8 @@ const create = async (req,res)=> {
             title,
             slug,
             details,
-            media: media || "",
+            media,
+            fileType,
             color,
             goalAmount,
         })
@@ -105,6 +107,7 @@ const getCard = async(req,res)=>{
         console.log(e)
     }
 }
+
 //delete card
 const deleteCard = async (req,res)=>{
     try {
