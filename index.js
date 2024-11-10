@@ -16,6 +16,7 @@ cloudinary.config({
   api_secret : process.env.CLOUDINARY_API_SECRET
 })
 
+
 //built in middleware
 const app = express();
 const corsOptions ={

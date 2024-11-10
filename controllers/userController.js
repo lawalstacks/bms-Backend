@@ -352,8 +352,6 @@ const followUnfollow = async (req,res)=>{
             res.status(201).json({message:"user followed successfully"});
         }
 
-
-
     }catch(err){
         res.status(500).json({error: "error to follow/unfollow"})
     }
@@ -363,6 +361,7 @@ const followUnfollow = async (req,res)=>{
 const updateProfile= async (req,res)=>{
     const {name,username,email,password,bio,profilePic} = req.body
     const userId = req.user._id;
+
     try{
         let user = await User.findById(userId);
         if(!user){  res.status(400).json({error:"user not found"})}
@@ -380,10 +379,10 @@ const updateProfile= async (req,res)=>{
                 user.password = hashedPassword;
             }
             user = await user.save()
-            res.status(201).json({user,message:"profile updated!"})
+           return  res.status(201).json({user,message:"profile updated!"})
 
     }catch(error){
-        res.status(500).json({error:error})
+       return  res.status(500).json({error:error})
         console.log(error)
     }
 }

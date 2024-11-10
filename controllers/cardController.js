@@ -24,7 +24,6 @@ const create = async (req,res)=> {
             return res.status(400).json({error: 'maximum text character is 500'});
         }
         if(media){
-
             if(user.media){
                 cloudinary.uploader.destroy(user.media.split('/').pop().split('.')[0]);
             }
@@ -73,29 +72,54 @@ const create = async (req,res)=> {
 }
 //update card
 const update = async (req,res)=>{
-    const{postedBy,text,image,video} = req.body;
-    let {title,slug} = req.body;
+    const{title, details,color,goalAmount,} = req.body;
+    let {media} = req.body;
     const userId = req.user._id;
     const cardId = req.params.id;
     try{
         const user = await User.findById(userId);
         let card = await Card.findOne({_id: cardId});
-        if(user._id.toString() !== postedBy.toString()){res.status(400).json({error:"You cannot edit this card"})}
-        if(!card){res.status(400).json({error:"card not found"})}
-         else {
-            slug = Slug.slugify(title);
-            card.title = title || card.title
-            card.text = text || card.text;
-            card.slug = slug || card.slug;
-            card.image = image || card.image;
-            card.video = video || video.text;
-            card = await card.save();
-            res.status(200).json({card: card, message: "updated succesfully"});
+        if(user._id.toString() !== card.postedBy?.toString())
+        {
+            return res.status(400).json({error:"You cannot edit this card"})
         }
+        if(!card){
+            return res.status(400).json({error:"card not found"})
+        }
+        if(media){
+            if(card?.media){
+                cloudinary.uploader.destroy(card?.media.split('/').pop().split('.')[0]);
+            }
+            const uploadedResponse = await cloudinary.uploader.upload(media, {
+                public_id: "cardMedia",
+                resource_type: 'auto',
+                timeout: 600000,
+                chunk_size: 6000000
+            }, function(error, result) {
+
+            });
+            media = uploadedResponse.secure_url;
+            // Optimize delivery by resizing and applying auto-format and auto-quality
+        }
+        let slug = Slug.slugify(title);
+            await User.findOneAndUpdate(
+              { _id: userId, 'cards._id': cardId }, // Find user and card
+              {
+                  $set: {
+                      'cards.$.title': title || card.title,
+                      'cards.$.details': details || card.details,
+                      'cards.$.slug': slug,
+                      'cards.$.media': media || card.media,
+                      'cards.$.color': color || card.color,
+                      'cards.$.goalAmount': goalAmount || card.goalAmount
+                  }
+              },
+              { new: true }
+            )
+            await Card.findByIdAndUpdate(cardId,{$push: {cards: card }})
+           res.status(200).json({card: card, message: "updated succesfully"});
     }catch(error){
-        if(error.code=== 11000){
-            { res.status(400).json({message: "card title already used"})}
-        }
+        console.log(error)
     }
 }
 const getCard = async(req,res)=>{

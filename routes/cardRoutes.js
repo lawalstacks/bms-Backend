@@ -4,7 +4,7 @@ const cardController = require('../controllers/cardController');
 const protectedRoute = require('../middlewares/protectedRoute');
 
 router.post('/create',protectedRoute, cardController.create);
-router.post('/update/:id',protectedRoute, cardController.update);
+router.put('/update/:id',protectedRoute, cardController.update);
 router.get('/:slug',cardController.getCard);
 router.post('/delete/:slug',protectedRoute, cardController.deleteCard);
 
